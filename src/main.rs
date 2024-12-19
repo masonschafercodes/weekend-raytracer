@@ -6,7 +6,7 @@ use ray_math::Sphere;
 use ray_math::Vec3;
 
 use rayon::prelude::*;
-use std::sync::Arc; // Add this import
+use std::sync::Arc;
 
 fn random_double() -> f64 {
     rand::random::<f64>()

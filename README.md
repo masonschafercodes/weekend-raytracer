@@ -18,7 +18,9 @@ This implementation focuses on the first book, and the code is written in **Rust
 -   [x] **Chapter 2**: Vec3
 -   [x] **Chapter 3**: Rays, a Simple Camera, and Background
 -   [x] **Chapter 4**: Adding a Sphere
--   [ ] **Chapter 5**: Surface Normals and Multiple Objects _(Work in Progress)_
+-   [x] **Chapter 5**: Surface Normals and Multiple Objects
+-   [x] **Chapter 6**: Antialiasing (Random Sampling)
+-   [ ] **Chapter 7**: Diffuse Materials _(Work in Progress)_
 
 ## Usage
 
