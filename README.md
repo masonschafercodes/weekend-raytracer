@@ -32,9 +32,9 @@ This implementation focuses on the first book, and the code is written in **Rust
 To run the project and generate a rendered image:
 
 ```bash
-cargo run > image.ppm
+cargo run --release
 ```
 
-This will produce an image file named image.ppm. Use the PPM Viewer to view the image.
+## My Final Render (Example)
 
-> Note: In the future, I may update the project to directly export the rendered image to a file instead of relying on stdout redirection.
+![Final Render](./final_render.png)

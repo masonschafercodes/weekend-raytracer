@@ -10,7 +10,8 @@ mod utils;
 use camera::Camera;
 use environment::{Environment, SkyEnvironment};
 use hittable::HittableList;
-use indicatif::ProgressBar;
+use image::{ImageBuffer, Rgb};
+use indicatif::{ProgressBar, ProgressStyle};
 use material::{Dielectric, Lambertian, Metal};
 use nalgebra::Vector3;
 use rayon::prelude::*;
@@ -23,18 +24,18 @@ fn random_double() -> f64 {
 }
 
 fn main() {
-    // Image settings
+    const IMAGE_WIDTH: u32 = 3840; // 4K resolution
     const ASPECT_RATIO: f64 = 16.0 / 9.0;
-    let lookfrom = Vector3::new(3.0, 3.0, 2.0);
+    const IMAGE_HEIGHT: u32 = (IMAGE_WIDTH as f64 / ASPECT_RATIO) as u32;
+    const SAMPLES_PER_PIXEL: i32 = 1000; // Much higher sampling for clean output
+    const MAX_DEPTH: i32 = 50; // Deeper bounces for better caustics
+
+    let lookfrom = Vector3::new(2.5, 2.0, 2.5); // Higher and further back
     let lookat = Vector3::new(0.0, 0.0, -1.0);
     let vup = Vector3::new(0.0, 1.0, 0.0);
-    let aperture = 0.1; // Smaller = sharper focus, larger = more blur
-    let dist_to_focus = (lookfrom - lookat).magnitude(); // Auto-focus on looked-at point // Vertical field of view in degrees
-
-    const IMAGE_WIDTH: u32 = 1200;
-    const IMAGE_HEIGHT: u32 = (IMAGE_WIDTH as f64 / ASPECT_RATIO) as u32;
-    const SAMPLES_PER_PIXEL: i32 = 500;
-    const MAX_DEPTH: i32 = 50;
+    let aperture = 0.1; // Moderate DOF for nice bokeh
+    let dist_to_focus = 3.5;
+    let vfov = 20.0; // Narrower FOV for more pleasing perspective
 
     // World setup
     let mut world = HittableList::new();
@@ -101,22 +102,27 @@ fn main() {
         lookfrom,
         lookat,
         vup,
-        20.0, // fov
+        vfov, // fov
         ASPECT_RATIO,
         aperture,
         dist_to_focus,
     ));
 
     let progress = ProgressBar::new((IMAGE_HEIGHT * IMAGE_WIDTH) as u64);
+    progress.set_style(
+        ProgressStyle::default_bar()
+            .template("[{elapsed_precise}] {bar:40.cyan/blue} {pos:>7}/{len:7} {percent}% {eta}")
+            .expect("Failed to set progress bar style")
+            .progress_chars("##-"),
+    );
 
     let environment: Arc<dyn Environment> = Arc::new(SkyEnvironment::new(
-        Vector3::new(0.5, 0.7, 1.0),
-        Vector3::new(1.0, 0.98, 0.95),
-        Vector3::new(0.0, 3.0, -1.0),
+        Vector3::new(0.3, 0.4, 0.6),
+        Vector3::new(1.0, 0.95, 0.8),
+        Vector3::new(2.0, 3.0, 1.0),
         0.015,
     ));
 
-    // Create a vector to store all pixels
     let pixels: Vec<Vector3<f64>> = (0..IMAGE_HEIGHT)
         .into_par_iter()
         .rev()
@@ -135,23 +141,25 @@ fn main() {
                 }
 
                 progress.inc(1);
-                // Scale color by the number of samples
                 pixel_color / SAMPLES_PER_PIXEL as f64
             })
         })
         .collect();
 
-    // Output the image
-    println!("P3\n{} {}\n255", IMAGE_WIDTH, IMAGE_HEIGHT);
-    pixels.iter().for_each(|pixel| {
-        let r = utils::linear_to_gamma(pixel.x);
-        let g = utils::linear_to_gamma(pixel.y);
-        let b = utils::linear_to_gamma(pixel.z);
-        let ir = (255.99 * r.clamp(0.0, 0.999)) as u32;
-        let ig = (255.99 * g.clamp(0.0, 0.999)) as u32;
-        let ib = (255.99 * b.clamp(0.0, 0.999)) as u32;
-        println!("{} {} {}", ir, ig, ib);
-    });
+    let mut img = ImageBuffer::new(IMAGE_WIDTH, IMAGE_HEIGHT);
+
+    for (i, pixel) in pixels.iter().enumerate() {
+        let x = i as u32 % IMAGE_WIDTH;
+        let y = i as u32 / IMAGE_WIDTH;
+
+        let r = (255.99 * utils::linear_to_gamma(pixel.x).clamp(0.0, 0.999)) as u8;
+        let g = (255.99 * utils::linear_to_gamma(pixel.y).clamp(0.0, 0.999)) as u8;
+        let b = (255.99 * utils::linear_to_gamma(pixel.z).clamp(0.0, 0.999)) as u8;
+
+        img.put_pixel(x, y, Rgb([r, g, b]));
+    }
+
+    img.save("final_render.png").expect("Failed to save image");
 
     progress.finish();
 }
