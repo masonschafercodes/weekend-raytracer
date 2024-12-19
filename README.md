@@ -35,6 +35,6 @@ To run the project and generate a rendered image:
 cargo run --release
 ```
 
-## My Final Render (Example)
+## My Final Render (4K | Took 00:15:24)
 
 ![Final Render](./final_render.png)
