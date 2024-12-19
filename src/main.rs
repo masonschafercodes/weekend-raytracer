@@ -24,7 +24,7 @@ fn main() {
     let lookfrom = Vector3::new(-2.0, 2.0, 1.0); // Camera position
     let lookat = Vector3::new(0.0, 0.0, -1.0); // Point camera looks at
     let vup = Vector3::new(0.0, 1.0, 0.0); // Camera's up vector
-    let vfov = 90.0; // Vertical field of view in degrees
+    let vfov = 20.0; // Vertical field of view in degrees
 
     const IMAGE_WIDTH: u32 = 1200;
     const IMAGE_HEIGHT: u32 = (IMAGE_WIDTH as f64 / ASPECT_RATIO) as u32;
