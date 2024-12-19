@@ -280,7 +280,7 @@ impl Hittable for Sphere {
         let mut hit_record = HitRecord {
             p,
             normal: Vec3::new(0.0, 0.0, 0.0),
-            t: 0.0,
+            t: root,
             front_face: false,
         };
         hit_record.set_face_normal(r, outward_normal);
