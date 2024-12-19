@@ -174,7 +174,7 @@ impl Ray {
         if discriminant < 0.0 {
             None
         } else {
-            Some((-half_b - discriminant.sqrt()) / (2.0 * a))
+            Some((-half_b - discriminant.sqrt()) / a)
         }
     }
 
@@ -188,5 +188,17 @@ impl Ray {
         let t = 0.5 * (unit_direction.y + 1.0);
 
         Vec3::new(1.0, 1.0, 1.0) * (1.0 - t) + Vec3::new(0.5, 0.7, 1.0) * t
+    }
+}
+
+impl std::fmt::Display for Ray {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Ray({}, {})", self.origin, self.direction)
+    }
+}
+
+impl std::fmt::Debug for Ray {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Ray({}, {})", self.origin, self.direction)
     }
 }

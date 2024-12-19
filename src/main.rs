@@ -1,6 +1,7 @@
-mod lib;
-use lib::Ray;
-use lib::Vec3;
+mod ray_math;
+
+use ray_math::Ray;
+use ray_math::Vec3;
 use std::io::Write;
 
 fn main() {
