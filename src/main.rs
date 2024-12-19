@@ -1,6 +1,8 @@
 mod ray_math;
 
+use ray_math::HittableList;
 use ray_math::Ray;
+use ray_math::Sphere;
 use ray_math::Vec3;
 use std::io::Write;
 
@@ -8,6 +10,12 @@ fn main() {
     const IMAGE_HEIGHT: u32 = 256;
     const ASPECT_RATIO: f64 = 16.0 / 9.0;
     const IMAGE_WIDTH: u32 = (IMAGE_HEIGHT as f64 * ASPECT_RATIO) as u32;
+
+    // World
+
+    let mut world: HittableList = HittableList::new();
+    world.add(Box::new(Sphere::new(Vec3::new(0.0, 0.0, -1.0), 0.5)));
+    world.add(Box::new(Sphere::new(Vec3::new(0.0, -100.5, -1.0), 100.0)));
 
     // Camera
     const VIEWPORT_HEIGHT: f64 = 2.0;
@@ -40,7 +48,7 @@ fn main() {
             let ray_direction = pixel_center - camera_center;
             let ray = Ray::new(camera_center, ray_direction);
 
-            let pixel_color = ray.color();
+            let pixel_color = ray.color(&world);
             pixel_color.write_color(1);
         }
     }

@@ -129,6 +129,18 @@ impl std::ops::Div<f64> for Vec3 {
     }
 }
 
+impl std::ops::Neg for Vec3 {
+    type Output = Self;
+
+    fn neg(self) -> Self {
+        Self {
+            x: -self.x,
+            y: -self.y,
+            z: -self.z,
+        }
+    }
+}
+
 impl std::fmt::Display for Vec3 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "({}, {}, {})", self.x, self.y, self.z)
@@ -178,16 +190,20 @@ impl Ray {
         }
     }
 
-    pub fn color(&self) -> Vec3 {
-        if let Some(t) = Self::hit_sphere(Vec3::new(0.0, 0.0, -1.0), 0.5, self) {
-            let normal = (self.at(t) - Vec3::new(0.0, 0.0, -1.0)).unit_vector();
-            return 0.5 * Vec3::new(normal.x + 1.0, normal.y + 1.0, normal.z + 1.0);
+    pub fn color(&self, world: &HittableList) -> Vec3 {
+        let mut rec = HitRecord {
+            p: Vec3::new(0.0, 0.0, 0.0),
+            normal: Vec3::new(0.0, 0.0, 0.0),
+            t: 0.0,
+        };
+
+        if let Some(record) = world.hit(self, 0.0, f64::INFINITY, &rec) {
+            return 0.5 * (record.normal + Vec3::new(1.0, 1.0, 1.0));
         }
 
-        let unit_direction = self.direction().unit_vector();
+        let unit_direction = self.direction.unit_vector();
         let t = 0.5 * (unit_direction.y + 1.0);
-
-        Vec3::new(1.0, 1.0, 1.0) * (1.0 - t) + Vec3::new(0.5, 0.7, 1.0) * t
+        (1.0 - t) * Vec3::new(1.0, 1.0, 1.0) + t * Vec3::new(0.5, 0.7, 1.0)
     }
 }
 
@@ -200,5 +216,115 @@ impl std::fmt::Display for Ray {
 impl std::fmt::Debug for Ray {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "Ray({}, {})", self.origin, self.direction)
+    }
+}
+
+#[derive(Clone, Copy)]
+pub struct HitRecord {
+    p: Vec3,
+    normal: Vec3,
+    t: f64,
+}
+
+impl HitRecord {
+    pub fn set_face_normal(&mut self, r: &Ray, outward_normal: &Vec3) {
+        self.normal = if r.direction().dot(outward_normal) < 0.0 {
+            *outward_normal
+        } else {
+            -*outward_normal
+        };
+    }
+}
+
+pub trait Hittable {
+    fn hit(&self, r: &Ray, t_min: f64, t_max: f64, &hit_record: &HitRecord) -> Option<HitRecord> {
+        None
+    }
+}
+
+pub struct Sphere {
+    center: Vec3,
+    radius: f64,
+}
+
+impl Sphere {
+    pub fn new(center: Vec3, radius: f64) -> Self {
+        Self { center, radius }
+    }
+}
+
+impl Hittable for Sphere {
+    fn hit(&self, r: &Ray, t_min: f64, t_max: f64, hit_record: &HitRecord) -> Option<HitRecord> {
+        let oc = r.origin() - self.center;
+        let a = r.direction().length_squared();
+        let half_b = oc.dot(&r.direction());
+        let c = oc.length_squared() - self.radius * self.radius;
+        let discriminant = half_b * half_b - a * c;
+
+        if discriminant < 0.0 {
+            return None;
+        }
+
+        let sqrtd = discriminant.sqrt();
+
+        let mut root = (-half_b - sqrtd) / a;
+        if root < t_min || t_max < root {
+            root = (-half_b + sqrtd) / a;
+            if root < t_min || t_max < root {
+                return None;
+            }
+        }
+
+        let p = r.at(root);
+        let outward_normal = (p - self.center) / self.radius;
+        let mut hit_record = HitRecord {
+            p,
+            normal: Vec3::new(0.0, 0.0, 0.0),
+            t: 0.0,
+        };
+        hit_record.set_face_normal(r, &outward_normal);
+        Some(hit_record)
+    }
+}
+
+pub struct HittableList {
+    objects: Vec<Box<dyn Hittable>>,
+}
+
+impl HittableList {
+    pub fn new() -> Self {
+        Self {
+            objects: Vec::new(),
+        }
+    }
+
+    pub fn add(&mut self, object: Box<dyn Hittable>) {
+        self.objects.push(object);
+    }
+}
+
+impl Hittable for HittableList {
+    fn hit(&self, r: &Ray, t_min: f64, t_max: f64, hit_record: &HitRecord) -> Option<HitRecord> {
+        let mut temp_record = HitRecord {
+            p: Vec3::new(0.0, 0.0, 0.0),
+            normal: Vec3::new(0.0, 0.0, 0.0),
+            t: 0.0,
+        };
+        let mut hit_anything = false;
+        let mut closest_so_far = t_max;
+
+        for object in self.objects.iter() {
+            if let Some(record) = object.hit(r, t_min, closest_so_far, &temp_record) {
+                hit_anything = true;
+                closest_so_far = record.t;
+                temp_record = record;
+            }
+        }
+
+        if hit_anything {
+            Some(temp_record)
+        } else {
+            None
+        }
     }
 }
