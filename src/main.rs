@@ -8,6 +8,7 @@ mod texture;
 mod utils;
 
 use camera::Camera;
+use core::time;
 use environment::{Environment, SkyEnvironment};
 use hittable::HittableList;
 use image::{ImageBuffer, Rgb};
@@ -16,7 +17,10 @@ use material::{Dielectric, Lambertian, Metal};
 use nalgebra::Vector3;
 use rayon::prelude::*;
 use sphere::Sphere;
-use std::sync::Arc;
+use std::{
+    sync::Arc,
+    time::{SystemTime, UNIX_EPOCH},
+};
 use texture::{CheckerTexture, MarbleTexture, SolidColor};
 
 fn random_double() -> f64 {
@@ -27,15 +31,15 @@ fn main() {
     const IMAGE_WIDTH: u32 = 3840; // 4K resolution
     const ASPECT_RATIO: f64 = 16.0 / 9.0;
     const IMAGE_HEIGHT: u32 = (IMAGE_WIDTH as f64 / ASPECT_RATIO) as u32;
-    const SAMPLES_PER_PIXEL: i32 = 1000; // Much higher sampling for clean output
+    const SAMPLES_PER_PIXEL: i32 = 100; // Much higher sampling for clean output
     const MAX_DEPTH: i32 = 50; // Deeper bounces for better caustics
 
     let lookfrom = Vector3::new(2.5, 2.0, 2.5); // Higher and further back
     let lookat = Vector3::new(0.0, 0.0, -1.0);
     let vup = Vector3::new(0.0, 1.0, 0.0);
-    let aperture = 0.1; // Moderate DOF for nice bokeh
-    let dist_to_focus = 3.5;
-    let vfov = 20.0; // Narrower FOV for more pleasing perspective
+    let aperture = 0.1;
+    let dist_to_focus = (lookfrom - lookat).magnitude();
+    let vfov = 20.0;
 
     // World setup
     let mut world = HittableList::new();
@@ -159,7 +163,12 @@ fn main() {
         img.put_pixel(x, y, Rgb([r, g, b]));
     }
 
-    img.save("final_render.png").expect("Failed to save image");
+    let time_for_render_image_name = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .expect("Time went backwards")
+        .as_secs();
+    let image_name = format!("render_{}.png", time_for_render_image_name);
+    img.save(image_name).expect("Failed to save image");
 
     progress.finish();
 }

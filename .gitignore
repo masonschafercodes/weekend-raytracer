@@ -1,3 +1,4 @@
 /target
 image.ppm
 /src/image.ppm
+render_*.png
