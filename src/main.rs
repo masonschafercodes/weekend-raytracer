@@ -1,4 +1,5 @@
 mod camera;
+mod environment;
 mod hittable;
 mod material;
 mod ray;
@@ -7,6 +8,7 @@ mod texture;
 mod utils;
 
 use camera::Camera;
+use environment::{Environment, SkyEnvironment};
 use hittable::HittableList;
 use indicatif::ProgressBar;
 use material::{Dielectric, Lambertian, Metal};
@@ -79,9 +81,9 @@ fn main() {
     )));
 
     let marble_texture = Box::new(MarbleTexture::new(
-        4.0,
-        Vector3::new(0.9, 0.9, 0.9),
-        Vector3::new(0.2, 0.2, 0.2),
+        2.0,                            // scale adjusts the frequency of the marble pattern
+        Vector3::new(0.95, 0.95, 0.95), // Base color
+        Vector3::new(0.4, 0.3, 0.3),    // Vein color
     ));
     let marble_material = Arc::new(Lambertian::new(marble_texture));
 
@@ -98,6 +100,13 @@ fn main() {
 
     let progress = ProgressBar::new((IMAGE_HEIGHT * IMAGE_WIDTH) as u64);
 
+    let environment: Arc<dyn Environment> = Arc::new(SkyEnvironment::new(
+        Vector3::new(0.5, 0.7, 1.0),
+        Vector3::new(1.0, 0.98, 0.95),
+        Vector3::new(0.0, 3.0, -1.0),
+        0.015,
+    ));
+
     // Create a vector to store all pixels
     let pixels: Vec<Vector3<f64>> = (0..IMAGE_HEIGHT)
         .into_par_iter()
@@ -106,13 +115,14 @@ fn main() {
             let world = Arc::clone(&world);
             let camera = Arc::clone(&camera);
             let progress = progress.clone();
+            let environment = Arc::clone(&environment);
             (0..IMAGE_WIDTH).into_par_iter().map(move |i| {
                 let mut pixel_color = Vector3::new(0.0, 0.0, 0.0);
                 for _ in 0..SAMPLES_PER_PIXEL {
                     let u = (i as f64 + random_double()) / (IMAGE_WIDTH - 1) as f64;
                     let v = (j as f64 + random_double()) / (IMAGE_HEIGHT - 1) as f64;
                     let r = camera.get_ray(u, v);
-                    pixel_color += r.color(&world, MAX_DEPTH);
+                    pixel_color += r.color(&world, &environment, MAX_DEPTH);
                 }
 
                 progress.inc(1);

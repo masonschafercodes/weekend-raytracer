@@ -1,6 +1,11 @@
+use std::sync::Arc;
+
 use nalgebra::Vector3;
 
-use crate::hittable::{Hittable, HittableList};
+use crate::{
+    environment::Environment,
+    hittable::{Hittable, HittableList},
+};
 
 #[derive(Clone, Copy, Debug)]
 pub struct Ray {
@@ -25,23 +30,24 @@ impl Ray {
         self.direction
     }
 
-    pub fn color(&self, world: &HittableList, recursion_limit: i32) -> Vector3<f64> {
+    pub fn color(
+        &self,
+        world: &HittableList,
+        env: &Arc<dyn Environment>,
+        recursion_limit: i32,
+    ) -> Vector3<f64> {
         if recursion_limit <= 0 {
             return Vector3::new(0.0, 0.0, 0.0);
         }
 
         if let Some(record) = world.hit(self, 0.001, f64::INFINITY) {
             if let Some((scattered, attenuation)) = record.material.scatter(self, &record) {
-                return attenuation.component_mul(&scattered.color(world, recursion_limit - 1));
+                attenuation.component_mul(&scattered.color(world, env, recursion_limit - 1))
+            } else {
+                Vector3::new(0.0, 0.0, 0.0)
             }
-            return Vector3::new(0.0, 0.0, 0.0);
+        } else {
+            env.background_color(self)
         }
-
-        let unit_direction = self.direction.normalize();
-        let t = 0.5 * (unit_direction.y + 1.0);
-
-        let sky_bottom = Vector3::new(0.6, 0.3, 0.1);
-        let sky_top = Vector3::new(0.1, 0.2, 0.4);
-        (1.0 - t) * sky_bottom + t * sky_top
     }
 }
