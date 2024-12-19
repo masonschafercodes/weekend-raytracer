@@ -20,7 +20,12 @@ This implementation focuses on the first book, and the code is written in **Rust
 -   [x] **Chapter 4**: Adding a Sphere
 -   [x] **Chapter 5**: Surface Normals and Multiple Objects
 -   [x] **Chapter 6**: Antialiasing (Random Sampling)
--   [ ] **Chapter 7**: Diffuse Materials _(Work in Progress)_
+-   [x] **Chapter 7**: Diffuse Materials
+-   [x] **Chapter 8**: Metal
+-   [x] **Chapter 9**: Dielectrics
+-   [x] **Chapter 10**: Positionable Camera
+-   [x] **Chapter 11**: Defocus Blur
+-   [x] **Chapter 12**: Where Next?
 
 ## Usage
 
