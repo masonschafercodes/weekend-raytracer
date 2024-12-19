@@ -351,6 +351,7 @@ impl Hittable for HittableList {
     }
 }
 
+#[derive(Clone, Copy, Debug)]
 pub struct Camera {
     origin: Vec3,
     lower_left_corner: Vec3,
