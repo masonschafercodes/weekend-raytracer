@@ -14,7 +14,7 @@ use nalgebra::Vector3;
 use rayon::prelude::*;
 use sphere::Sphere;
 use std::sync::Arc;
-use texture::{CheckerTexture, SolidColor};
+use texture::{CheckerTexture, MarbleTexture, SolidColor};
 
 fn random_double() -> f64 {
     rand::random::<f64>()
@@ -76,6 +76,19 @@ fn main() {
         Vector3::new(1.0, 0.0, -1.0),
         0.5,
         right_material,
+    )));
+
+    let marble_texture = Box::new(MarbleTexture::new(
+        4.0,
+        Vector3::new(0.9, 0.9, 0.9),
+        Vector3::new(0.2, 0.2, 0.2),
+    ));
+    let marble_material = Arc::new(Lambertian::new(marble_texture));
+
+    world.add(Box::new(Sphere::new(
+        Vector3::new(-2.0, 0.0, -1.0),
+        0.5,
+        marble_material,
     )));
 
     let world = Arc::new(world);
