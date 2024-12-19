@@ -25,10 +25,11 @@ fn random_double() -> f64 {
 fn main() {
     // Image settings
     const ASPECT_RATIO: f64 = 16.0 / 9.0;
-    let lookfrom = Vector3::new(-2.0, 2.0, 1.0); // Camera position
-    let lookat = Vector3::new(0.0, 0.0, -1.0); // Point camera looks at
-    let vup = Vector3::new(0.0, 1.0, 0.0); // Camera's up vector
-    let vfov = 75.0; // Vertical field of view in degrees
+    let lookfrom = Vector3::new(3.0, 3.0, 2.0);
+    let lookat = Vector3::new(0.0, 0.0, -1.0);
+    let vup = Vector3::new(0.0, 1.0, 0.0);
+    let aperture = 0.1; // Smaller = sharper focus, larger = more blur
+    let dist_to_focus = (lookfrom - lookat).magnitude(); // Auto-focus on looked-at point // Vertical field of view in degrees
 
     const IMAGE_WIDTH: u32 = 1200;
     const IMAGE_HEIGHT: u32 = (IMAGE_WIDTH as f64 / ASPECT_RATIO) as u32;
@@ -96,7 +97,15 @@ fn main() {
     let world = Arc::new(world);
 
     // Camera setup
-    let camera = Arc::new(Camera::new(lookfrom, lookat, vup, vfov, ASPECT_RATIO));
+    let camera = Arc::new(Camera::new(
+        lookfrom,
+        lookat,
+        vup,
+        20.0, // fov
+        ASPECT_RATIO,
+        aperture,
+        dist_to_focus,
+    ));
 
     let progress = ProgressBar::new((IMAGE_HEIGHT * IMAGE_WIDTH) as u64);
 
