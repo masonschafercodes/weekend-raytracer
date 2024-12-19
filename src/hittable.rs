@@ -5,6 +5,7 @@ use nalgebra::Vector3;
 use crate::{
     material::{Lambertian, Material},
     ray::Ray,
+    texture::SolidColor,
 };
 
 pub trait Hittable: Send + Sync {
@@ -55,7 +56,9 @@ impl Hittable for HittableList {
             normal: Vector3::new(0.0, 0.0, 0.0),
             t: 0.0,
             front_face: false,
-            material: Arc::new(Lambertian::new(Vector3::new(0.0, 0.0, 0.0))),
+            material: Arc::new(Lambertian::new(Box::new(
+                SolidColor::new(Vector3::new(0.2, 0.3, 0.1)), // Dark green
+            ))),
         };
         let mut hit_anything = false;
         let mut closest_so_far = t_max;

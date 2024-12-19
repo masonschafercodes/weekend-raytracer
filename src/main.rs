@@ -3,6 +3,7 @@ mod hittable;
 mod material;
 mod ray;
 mod sphere;
+mod texture;
 mod utils;
 
 use camera::Camera;
@@ -13,6 +14,7 @@ use nalgebra::Vector3;
 use rayon::prelude::*;
 use sphere::Sphere;
 use std::sync::Arc;
+use texture::{CheckerTexture, SolidColor};
 
 fn random_double() -> f64 {
     rand::random::<f64>()
@@ -24,7 +26,7 @@ fn main() {
     let lookfrom = Vector3::new(-2.0, 2.0, 1.0); // Camera position
     let lookat = Vector3::new(0.0, 0.0, -1.0); // Point camera looks at
     let vup = Vector3::new(0.0, 1.0, 0.0); // Camera's up vector
-    let vfov = 20.0; // Vertical field of view in degrees
+    let vfov = 75.0; // Vertical field of view in degrees
 
     const IMAGE_WIDTH: u32 = 1200;
     const IMAGE_HEIGHT: u32 = (IMAGE_WIDTH as f64 / ASPECT_RATIO) as u32;
@@ -34,14 +36,23 @@ fn main() {
     // World setup
     let mut world = HittableList::new();
 
-    let ground_material = Arc::new(Lambertian::new(Vector3::new(0.5, 0.5, 0.5)));
+    let checker = Box::new(CheckerTexture::new(
+        Vector3::new(0.2, 0.3, 0.1), // Dark green
+        Vector3::new(0.9, 0.9, 0.9), // Light gray
+        0.5,                         // Scale of the checker pattern
+    ));
+    let solid_orange = Box::new(
+        SolidColor::new(Vector3::new(0.8, 0.4, 0.1)), // Orange
+    );
+
+    let ground_material = Arc::new(Lambertian::new(checker));
     world.add(Box::new(Sphere::new(
         Vector3::new(0.0, -100.5, -1.0),
         100.0,
         ground_material,
     )));
 
-    let center_material = Arc::new(Lambertian::new(Vector3::new(0.7, 0.3, 0.3)));
+    let center_material = Arc::new(Lambertian::new(solid_orange));
     world.add(Box::new(Sphere::new(
         Vector3::new(0.0, 0.0, -1.0),
         0.5,

@@ -1,7 +1,11 @@
 use nalgebra::Vector3;
 use rand::Rng;
 
-use crate::{hittable::HitRecord, ray::Ray};
+use crate::{
+    hittable::HitRecord,
+    ray::Ray,
+    texture::{SolidColor, Texture},
+};
 
 fn reflectance(cosine: f64, ref_idx: f64) -> f64 {
     let r0 = ((1.0 - ref_idx) / (1.0 + ref_idx)).powi(2);
@@ -22,12 +26,18 @@ pub trait Material: Send + Sync {
 }
 
 pub struct Lambertian {
-    albedo: Vector3<f64>,
+    albedo: Box<dyn Texture>,
 }
 
 impl Lambertian {
-    pub fn new(albedo: Vector3<f64>) -> Self {
+    pub fn new(albedo: Box<dyn Texture>) -> Self {
         Self { albedo }
+    }
+
+    pub fn from_color(color: Vector3<f64>) -> Self {
+        Self {
+            albedo: Box::new(SolidColor::new(color)),
+        }
     }
 }
 
@@ -74,7 +84,8 @@ impl Material for Lambertian {
     fn scatter(&self, _ray_in: &Ray, hit_record: &HitRecord) -> Option<(Ray, Vector3<f64>)> {
         let scatter_direction = hit_record.normal + random_in_unit_sphere().normalize();
         let scattered = Ray::new(hit_record.p, scatter_direction);
-        Some((scattered, self.albedo))
+        let attenuation = self.albedo.value(0.0, 0.0, &hit_record.p); // We'll add proper UV coordinates later
+        Some((scattered, attenuation))
     }
 }
 

@@ -39,6 +39,9 @@ impl Ray {
 
         let unit_direction = self.direction.normalize();
         let t = 0.5 * (unit_direction.y + 1.0);
-        (1.0 - t) * Vector3::new(1.0, 1.0, 1.0) + t * Vector3::new(0.5, 0.7, 1.0)
+
+        let sky_bottom = Vector3::new(0.6, 0.3, 0.1);
+        let sky_top = Vector3::new(0.1, 0.2, 0.4);
+        (1.0 - t) * sky_bottom + t * sky_top
     }
 }
