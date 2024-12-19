@@ -1,4 +1,4 @@
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub struct Vec3 {
     x: f64,
     y: f64,
@@ -6,6 +6,17 @@ pub struct Vec3 {
 }
 
 impl Vec3 {
+    pub const ZERO: Self = Self {
+        x: 0.0,
+        y: 0.0,
+        z: 0.0,
+    };
+    pub const ONE: Self = Self {
+        x: 1.0,
+        y: 1.0,
+        z: 1.0,
+    };
+
     pub fn new(x: f64, y: f64, z: f64) -> Self {
         Self { x, y, z }
     }
@@ -46,15 +57,29 @@ impl Vec3 {
         self.clone() / self.length()
     }
 
+    pub fn color(r: f64, g: f64, b: f64) -> Self {
+        Self { x: r, y: g, z: b }
+    }
+
     pub fn write_color(&self, samples_per_pixel: i32) {
         let scale = 1.0 / samples_per_pixel as f64;
 
-        let r = (256.0 * (self.r() * scale).sqrt().clamp(0.0, 0.999)) as i32;
-        let g = (256.0 * (self.g() * scale).sqrt().clamp(0.0, 0.999)) as i32;
-        let b = (256.0 * (self.b() * scale).sqrt().clamp(0.0, 0.999)) as i32;
+        // Apply gamma correction with gamma=2.0
+        let r = linear_to_gamma(self.r() * scale);
+        let g = linear_to_gamma(self.g() * scale);
+        let b = linear_to_gamma(self.b() * scale);
 
-        println!("{} {} {}", r, g, b);
+        println!(
+            "{} {} {}",
+            (256.0 * r.clamp(0.0, 0.999)) as i32,
+            (256.0 * g.clamp(0.0, 0.999)) as i32,
+            (256.0 * b.clamp(0.0, 0.999)) as i32
+        );
     }
+}
+
+fn linear_to_gamma(linear_component: f64) -> f64 {
+    linear_component.sqrt()
 }
 
 impl std::ops::Add for Vec3 {
@@ -147,12 +172,6 @@ impl std::fmt::Display for Vec3 {
     }
 }
 
-impl std::fmt::Debug for Vec3 {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "Vec3({}, {}, {})", self.x, self.y, self.z)
-    }
-}
-
 #[derive(Clone, Copy)]
 pub struct Ray {
     origin: Vec3,
@@ -176,28 +195,8 @@ impl Ray {
         self.direction
     }
 
-    pub fn hit_sphere(center: Vec3, radius: f64, r: &Ray) -> Option<f64> {
-        let oc = r.origin() - center;
-        let a = r.direction().length_squared();
-        let half_b = oc.dot(&r.direction());
-        let c = oc.length_squared() - radius * radius;
-        let discriminant = half_b * half_b - a * c;
-
-        if discriminant < 0.0 {
-            None
-        } else {
-            Some((-half_b - discriminant.sqrt()) / a)
-        }
-    }
-
     pub fn color(&self, world: &HittableList) -> Vec3 {
-        let mut rec = HitRecord {
-            p: Vec3::new(0.0, 0.0, 0.0),
-            normal: Vec3::new(0.0, 0.0, 0.0),
-            t: 0.0,
-        };
-
-        if let Some(record) = world.hit(self, 0.0, f64::INFINITY, &rec) {
+        if let Some(record) = world.hit(self, 0.0, f64::INFINITY) {
             return 0.5 * (record.normal + Vec3::new(1.0, 1.0, 1.0));
         }
 
@@ -221,25 +220,26 @@ impl std::fmt::Debug for Ray {
 
 #[derive(Clone, Copy)]
 pub struct HitRecord {
-    p: Vec3,
-    normal: Vec3,
-    t: f64,
+    pub p: Vec3,
+    pub normal: Vec3,
+    pub t: f64,
+    pub front_face: bool, // Add this to track which side we hit
 }
 
 impl HitRecord {
-    pub fn set_face_normal(&mut self, r: &Ray, outward_normal: &Vec3) {
-        self.normal = if r.direction().dot(outward_normal) < 0.0 {
-            *outward_normal
+    pub fn set_face_normal(&mut self, r: &Ray, outward_normal: Vec3) {
+        self.front_face = r.direction().dot(&outward_normal) < 0.0;
+        self.normal = if self.front_face {
+            outward_normal
         } else {
-            -*outward_normal
+            -outward_normal
         };
     }
 }
 
-pub trait Hittable {
-    fn hit(&self, r: &Ray, t_min: f64, t_max: f64, &hit_record: &HitRecord) -> Option<HitRecord> {
-        None
-    }
+pub trait Hittable: Send + Sync {
+    // Make it thread-safe
+    fn hit(&self, r: &Ray, t_min: f64, t_max: f64) -> Option<HitRecord>;
 }
 
 pub struct Sphere {
@@ -254,7 +254,7 @@ impl Sphere {
 }
 
 impl Hittable for Sphere {
-    fn hit(&self, r: &Ray, t_min: f64, t_max: f64, hit_record: &HitRecord) -> Option<HitRecord> {
+    fn hit(&self, r: &Ray, t_min: f64, t_max: f64) -> Option<HitRecord> {
         let oc = r.origin() - self.center;
         let a = r.direction().length_squared();
         let half_b = oc.dot(&r.direction());
@@ -281,8 +281,9 @@ impl Hittable for Sphere {
             p,
             normal: Vec3::new(0.0, 0.0, 0.0),
             t: 0.0,
+            front_face: false,
         };
-        hit_record.set_face_normal(r, &outward_normal);
+        hit_record.set_face_normal(r, outward_normal);
         Some(hit_record)
     }
 }
@@ -304,17 +305,18 @@ impl HittableList {
 }
 
 impl Hittable for HittableList {
-    fn hit(&self, r: &Ray, t_min: f64, t_max: f64, hit_record: &HitRecord) -> Option<HitRecord> {
+    fn hit(&self, r: &Ray, t_min: f64, t_max: f64) -> Option<HitRecord> {
         let mut temp_record = HitRecord {
             p: Vec3::new(0.0, 0.0, 0.0),
             normal: Vec3::new(0.0, 0.0, 0.0),
             t: 0.0,
+            front_face: false,
         };
         let mut hit_anything = false;
         let mut closest_so_far = t_max;
 
         for object in self.objects.iter() {
-            if let Some(record) = object.hit(r, t_min, closest_so_far, &temp_record) {
+            if let Some(record) = object.hit(r, t_min, closest_so_far) {
                 hit_anything = true;
                 closest_so_far = record.t;
                 temp_record = record;
@@ -326,5 +328,40 @@ impl Hittable for HittableList {
         } else {
             None
         }
+    }
+}
+
+pub struct Camera {
+    origin: Vec3,
+    lower_left_corner: Vec3,
+    horizontal: Vec3,
+    vertical: Vec3,
+}
+
+impl Camera {
+    pub fn new(aspect_ratio: f64) -> Self {
+        let viewport_height = 2.0;
+        let viewport_width = aspect_ratio * viewport_height;
+        let focal_length = 1.0;
+
+        let origin = Vec3::ZERO;
+        let horizontal = Vec3::new(viewport_width, 0.0, 0.0);
+        let vertical = Vec3::new(0.0, viewport_height, 0.0);
+        let lower_left_corner =
+            origin - horizontal / 2.0 - vertical / 2.0 - Vec3::new(0.0, 0.0, focal_length);
+
+        Self {
+            origin,
+            lower_left_corner,
+            horizontal,
+            vertical,
+        }
+    }
+
+    pub fn get_ray(&self, u: f64, v: f64) -> Ray {
+        Ray::new(
+            self.origin,
+            self.lower_left_corner + u * self.horizontal + v * self.vertical - self.origin,
+        )
     }
 }

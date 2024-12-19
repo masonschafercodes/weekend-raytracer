@@ -1,57 +1,44 @@
 mod ray_math;
 
+use ray_math::Camera;
 use ray_math::HittableList;
-use ray_math::Ray;
 use ray_math::Sphere;
 use ray_math::Vec3;
-use std::io::Write;
+
+fn random_double() -> f64 {
+    rand::random::<f64>()
+}
 
 fn main() {
-    const IMAGE_HEIGHT: u32 = 256;
+    // Image settings
     const ASPECT_RATIO: f64 = 16.0 / 9.0;
-    const IMAGE_WIDTH: u32 = (IMAGE_HEIGHT as f64 * ASPECT_RATIO) as u32;
+    const IMAGE_WIDTH: u32 = 400;
+    const IMAGE_HEIGHT: u32 = (IMAGE_WIDTH as f64 / ASPECT_RATIO) as u32;
+    const SAMPLES_PER_PIXEL: i32 = 100;
 
-    // World
-
-    let mut world: HittableList = HittableList::new();
+    // World setup
+    let mut world = HittableList::new();
     world.add(Box::new(Sphere::new(Vec3::new(0.0, 0.0, -1.0), 0.5)));
     world.add(Box::new(Sphere::new(Vec3::new(0.0, -100.5, -1.0), 100.0)));
 
-    // Camera
-    const VIEWPORT_HEIGHT: f64 = 2.0;
-    const VIEWPORT_WIDTH: f64 = ASPECT_RATIO * VIEWPORT_HEIGHT;
-    const FOCAL_LENGTH: f64 = 1.0;
+    // Camera setup
+    let camera = Camera::new(ASPECT_RATIO);
 
-    let camera_center = Vec3::new(0.0, 0.0, 0.0);
-
-    let viewport_u = Vec3::new(VIEWPORT_WIDTH, 0.0, 0.0);
-    let viewport_v = Vec3::new(0.0, -VIEWPORT_HEIGHT, 0.0);
-
-    let pixel_delta_u = viewport_u / IMAGE_WIDTH as f64;
-    let pixel_delta_v = viewport_v / IMAGE_HEIGHT as f64;
-
-    let viewport_upper_left =
-        camera_center - Vec3::new(0.0, 0.0, FOCAL_LENGTH) - viewport_u / 2.0 - viewport_v / 2.0;
-
-    let pixel00_loc = viewport_upper_left + 0.5 * (pixel_delta_u + pixel_delta_v);
-
+    // Render
     println!("P3\n{} {}\n255", IMAGE_WIDTH, IMAGE_HEIGHT);
 
-    for j in 0..IMAGE_HEIGHT {
-        eprint!("\rScanlines remaining: {} ", IMAGE_HEIGHT - j - 1);
-        std::io::stderr().flush().unwrap();
-
+    for j in (0..IMAGE_HEIGHT).rev() {
+        eprint!("\rScanlines remaining: {} ", j);
         for i in 0..IMAGE_WIDTH {
-            let pixel_center =
-                pixel00_loc + (i as f64 * pixel_delta_u) + (j as f64 * pixel_delta_v);
-
-            let ray_direction = pixel_center - camera_center;
-            let ray = Ray::new(camera_center, ray_direction);
-
-            let pixel_color = ray.color(&world);
-            pixel_color.write_color(1);
+            let mut pixel_color = Vec3::ZERO;
+            for _ in 0..SAMPLES_PER_PIXEL {
+                let u = (i as f64 + random_double()) / (IMAGE_WIDTH - 1) as f64;
+                let v = (j as f64 + random_double()) / (IMAGE_HEIGHT - 1) as f64;
+                let r = camera.get_ray(u, v);
+                pixel_color = pixel_color + r.color(&world);
+            }
+            pixel_color.write_color(SAMPLES_PER_PIXEL);
         }
     }
-
     eprintln!("\nDone.");
 }
