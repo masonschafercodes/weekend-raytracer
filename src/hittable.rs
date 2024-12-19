@@ -1,18 +1,24 @@
+use std::sync::Arc;
+
 use nalgebra::Vector3;
 
-use crate::ray::Ray;
+use crate::{
+    material::{Lambertian, Material},
+    ray::Ray,
+};
 
 pub trait Hittable: Send + Sync {
     // Make it thread-safe
     fn hit(&self, r: &Ray, t_min: f64, t_max: f64) -> Option<HitRecord>;
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone)]
 pub struct HitRecord {
     pub p: Vector3<f64>,
     pub normal: Vector3<f64>,
     pub t: f64,
     pub front_face: bool,
+    pub material: Arc<dyn Material>,
 }
 
 impl HitRecord {
@@ -49,6 +55,7 @@ impl Hittable for HittableList {
             normal: Vector3::new(0.0, 0.0, 0.0),
             t: 0.0,
             front_face: false,
+            material: Arc::new(Lambertian::new(Vector3::new(0.0, 0.0, 0.0))),
         };
         let mut hit_anything = false;
         let mut closest_so_far = t_max;

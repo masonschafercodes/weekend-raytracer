@@ -1,18 +1,26 @@
+use std::sync::Arc;
+
 use nalgebra::Vector3;
 
 use crate::{
     hittable::{HitRecord, Hittable},
+    material::Material,
     ray::Ray,
 };
 
 pub struct Sphere {
     center: Vector3<f64>,
     radius: f64,
+    material: Arc<dyn Material>,
 }
 
 impl Sphere {
-    pub fn new(center: Vector3<f64>, radius: f64) -> Self {
-        Self { center, radius }
+    pub fn new(center: Vector3<f64>, radius: f64, material: Arc<dyn Material>) -> Self {
+        Self {
+            center,
+            radius,
+            material,
+        }
     }
 }
 
@@ -45,6 +53,7 @@ impl Hittable for Sphere {
             normal: Vector3::new(0.0, 0.0, 0.0),
             t: root,
             front_face: false,
+            material: Arc::clone(&self.material),
         };
         hit_record.set_face_normal(r, outward_normal);
         Some(hit_record)
