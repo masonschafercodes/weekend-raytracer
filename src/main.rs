@@ -15,6 +15,7 @@ fn main() {
     const IMAGE_WIDTH: u32 = 400;
     const IMAGE_HEIGHT: u32 = (IMAGE_WIDTH as f64 / ASPECT_RATIO) as u32;
     const SAMPLES_PER_PIXEL: i32 = 100;
+    const MAX_DEPTH: i32 = 8;
 
     // World setup
     let mut world = HittableList::new();
@@ -35,7 +36,7 @@ fn main() {
                 let u = (i as f64 + random_double()) / (IMAGE_WIDTH - 1) as f64;
                 let v = (j as f64 + random_double()) / (IMAGE_HEIGHT - 1) as f64;
                 let r = camera.get_ray(u, v);
-                pixel_color = pixel_color + r.color(&world);
+                pixel_color = pixel_color + r.color(&world, MAX_DEPTH);
             }
             pixel_color.write_color(SAMPLES_PER_PIXEL);
         }

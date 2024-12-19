@@ -1,3 +1,7 @@
+fn linear_to_gamma(linear_component: f64) -> f64 {
+    linear_component.sqrt()
+}
+
 #[derive(Clone, Copy, Debug)]
 pub struct Vec3 {
     x: f64,
@@ -16,6 +20,20 @@ impl Vec3 {
         y: 1.0,
         z: 1.0,
     };
+
+    pub fn random_in_unit_sphere() -> Self {
+        loop {
+            let p = Vec3::new(
+                rand::random::<f64>(),
+                rand::random::<f64>(),
+                rand::random::<f64>(),
+            ) * 2.0
+                - Vec3::ONE;
+            if p.length_squared() < 1.0 {
+                return p;
+            }
+        }
+    }
 
     pub fn new(x: f64, y: f64, z: f64) -> Self {
         Self { x, y, z }
@@ -76,10 +94,6 @@ impl Vec3 {
             (256.0 * b.clamp(0.0, 0.999)) as i32
         );
     }
-}
-
-fn linear_to_gamma(linear_component: f64) -> f64 {
-    linear_component.sqrt()
 }
 
 impl std::ops::Add for Vec3 {
@@ -195,14 +209,20 @@ impl Ray {
         self.direction
     }
 
-    pub fn color(&self, world: &HittableList) -> Vec3 {
-        if let Some(record) = world.hit(self, 0.0, f64::INFINITY) {
-            return 0.5 * (record.normal + Vec3::new(1.0, 1.0, 1.0));
+    pub fn color(&self, world: &HittableList, recursion_limit: i32) -> Vec3 {
+        if recursion_limit <= 0 {
+            return Vec3::ZERO;
         }
 
-        let unit_direction = self.direction.unit_vector();
-        let t = 0.5 * (unit_direction.y + 1.0);
-        (1.0 - t) * Vec3::new(1.0, 1.0, 1.0) + t * Vec3::new(0.5, 0.7, 1.0)
+        if let Some(record) = world.hit(self, 0.001, f64::INFINITY) {
+            let target = record.p + record.normal + Vec3::random_in_unit_sphere();
+            let ray = Ray::new(record.p, target - record.p);
+            0.7 * ray.color(world, recursion_limit - 1) // Increased from 0.5 to 0.7
+        } else {
+            let unit_direction = self.direction.unit_vector();
+            let t = 0.5 * (unit_direction.y + 1.0);
+            (1.0 - t) * Vec3::ONE + t * Vec3::new(0.5, 0.7, 1.0)
+        }
     }
 }
 
